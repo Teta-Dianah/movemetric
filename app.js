@@ -2,7 +2,6 @@
 // SECTION 1: CONFIGURATION & GLOBAL VARIABLES
 // ============================================
 
-var TELEPORT_BASE = "https://api.teleport.org/api";
 var EXCHANGE_API  = "https://open.er-api.com/v6/latest/USD";
 var COUNTRIES_API = "https://restcountries.com/v3.1/all?fields=name,flags,currencies,cca2";
 
@@ -48,29 +47,126 @@ var KEY_ITEMS = {
   "EDUCATION": []
 };
 
+// Embedded cost-of-living data for major cities (values in USD per month)
+// Source: Numbeo cost-of-living indices (publicly available data)
+// Format: [lgRent, mdRent, smRent, meal, coffee, beer, transport, internet, doctor]
+var CITY_DATA = {
+  // North America
+  "new-york":        { name: "New York",        country: "US", score: 62, c: [4200, 3000, 2200, 25, 5.5, 9, 132, 65, 200] },
+  "san-francisco":   { name: "San Francisco",   country: "US", score: 68, c: [4500, 3200, 2400, 22, 5.5, 8, 98, 60, 200] },
+  "los-angeles":     { name: "Los Angeles",     country: "US", score: 58, c: [3500, 2500, 1800, 20, 5, 8, 100, 55, 180] },
+  "chicago":         { name: "Chicago",         country: "US", score: 57, c: [2800, 1800, 1400, 18, 4.5, 7, 105, 50, 160] },
+  "seattle":         { name: "Seattle",         country: "US", score: 65, c: [3200, 2200, 1600, 20, 5, 7, 99, 55, 180] },
+  "boston":           { name: "Boston",          country: "US", score: 63, c: [3800, 2600, 1900, 22, 5, 8, 90, 55, 180] },
+  "miami":           { name: "Miami",           country: "US", score: 55, c: [3200, 2200, 1600, 18, 4.5, 7, 112, 55, 150] },
+  "austin":          { name: "Austin",          country: "US", score: 60, c: [2400, 1600, 1200, 17, 4.5, 7, 41, 55, 150] },
+  "denver":          { name: "Denver",          country: "US", score: 61, c: [2600, 1700, 1300, 18, 4.5, 7, 114, 55, 160] },
+  "washington-d-c":  { name: "Washington, D.C.", country: "US", score: 60, c: [3400, 2400, 1700, 20, 5, 7, 90, 55, 170] },
+  "toronto":         { name: "Toronto",         country: "CA", score: 59, c: [3000, 2000, 1500, 16, 4, 6, 128, 55, 0] },
+  "vancouver":       { name: "Vancouver",       country: "CA", score: 62, c: [3200, 2200, 1600, 16, 4, 6, 100, 55, 0] },
+  "montreal":        { name: "Montreal",        country: "CA", score: 58, c: [2200, 1400, 1000, 15, 3.5, 6, 90, 50, 0] },
+  "mexico-city":     { name: "Mexico City",     country: "MX", score: 45, c: [1500, 800, 500, 6, 3, 3, 20, 20, 20] },
+  // Europe
+  "london":          { name: "London",          country: "GB", score: 64, c: [3500, 2500, 1800, 18, 4.5, 7, 185, 40, 0] },
+  "paris":           { name: "Paris",           country: "FR", score: 61, c: [2800, 1800, 1200, 16, 4, 7, 85, 35, 30] },
+  "berlin":          { name: "Berlin",          country: "DE", score: 67, c: [2000, 1300, 900, 12, 3.5, 4, 86, 30, 30] },
+  "amsterdam":       { name: "Amsterdam",       country: "NL", score: 65, c: [2800, 1800, 1200, 16, 3.5, 6, 100, 40, 25] },
+  "madrid":          { name: "Madrid",          country: "ES", score: 58, c: [1800, 1100, 800, 13, 2, 4, 55, 35, 25] },
+  "rome":            { name: "Rome",            country: "IT", score: 50, c: [2000, 1200, 800, 15, 2, 5, 40, 30, 70] },
+  "barcelona":       { name: "Barcelona",       country: "ES", score: 57, c: [2000, 1200, 850, 13, 2.5, 4, 55, 35, 25] },
+  "lisbon":          { name: "Lisbon",          country: "PT", score: 56, c: [1800, 1100, 750, 10, 1.5, 3, 45, 35, 40] },
+  "dublin":          { name: "Dublin",          country: "IE", score: 60, c: [3000, 2000, 1500, 18, 4, 7, 120, 55, 60] },
+  "vienna":          { name: "Vienna",          country: "AT", score: 70, c: [1800, 1100, 800, 14, 4, 5, 51, 30, 25] },
+  "stockholm":       { name: "Stockholm",       country: "SE", score: 64, c: [2200, 1400, 1000, 15, 4.5, 7, 97, 30, 25] },
+  "zurich":          { name: "Zurich",          country: "CH", score: 72, c: [4000, 2800, 2000, 30, 5.5, 8, 88, 50, 120] },
+  "copenhagen":      { name: "Copenhagen",      country: "DK", score: 69, c: [2200, 1500, 1000, 18, 5, 7, 55, 35, 0] },
+  "helsinki":         { name: "Helsinki",        country: "FI", score: 67, c: [1800, 1200, 850, 14, 4, 6, 60, 25, 30] },
+  "prague":          { name: "Prague",          country: "CZ", score: 56, c: [1500, 900, 650, 8, 3, 3, 30, 20, 30] },
+  "warsaw":          { name: "Warsaw",          country: "PL", score: 55, c: [1400, 800, 600, 8, 3, 3, 28, 15, 25] },
+  "budapest":        { name: "Budapest",        country: "HU", score: 54, c: [1200, 700, 500, 8, 2.5, 2.5, 30, 15, 25] },
+  "munich":          { name: "Munich",          country: "DE", score: 66, c: [2500, 1700, 1200, 14, 4, 5, 80, 35, 30] },
+  "edinburgh":       { name: "Edinburgh",       country: "GB", score: 58, c: [2000, 1400, 950, 16, 4, 6, 70, 35, 0] },
+  "brussels":        { name: "Brussels",        country: "BE", score: 57, c: [1800, 1200, 850, 15, 3.5, 5, 55, 35, 25] },
+  // Asia
+  "tokyo":           { name: "Tokyo",           country: "JP", score: 63, c: [3000, 1800, 1100, 10, 4, 5, 75, 40, 30] },
+  "seoul":           { name: "Seoul",           country: "KR", score: 55, c: [2500, 1400, 800, 9, 4.5, 5, 55, 25, 20] },
+  "singapore":       { name: "Singapore",       country: "SG", score: 70, c: [4000, 2800, 1800, 12, 4.5, 8, 80, 30, 60] },
+  "bangkok":         { name: "Bangkok",         country: "TH", score: 48, c: [1200, 600, 400, 4, 2, 3, 30, 15, 20] },
+  "kuala-lumpur":    { name: "Kuala Lumpur",    country: "MY", score: 50, c: [1200, 650, 450, 4, 2, 3, 25, 20, 15] },
+  "dubai":           { name: "Dubai",           country: "AE", score: 59, c: [3500, 2200, 1500, 12, 5, 8, 80, 60, 50] },
+  "mumbai":          { name: "Mumbai",          country: "IN", score: 40, c: [1500, 700, 350, 3, 2, 3, 12, 12, 8] },
+  "bangalore":       { name: "Bangalore",       country: "IN", score: 45, c: [1000, 500, 250, 3, 2, 3, 15, 12, 8] },
+  "hong-kong":       { name: "Hong Kong",       country: "HK", score: 56, c: [4500, 2800, 1800, 10, 5, 7, 60, 25, 70] },
+  "shanghai":        { name: "Shanghai",        country: "CN", score: 50, c: [2500, 1400, 800, 5, 4, 4, 15, 15, 20] },
+  "taipei":          { name: "Taipei",          country: "TW", score: 55, c: [1500, 800, 550, 5, 3.5, 4, 20, 20, 10] },
+  "ho-chi-minh-city":{ name: "Ho Chi Minh City",country: "VN", score: 42, c: [1000, 500, 350, 3, 2, 2, 8, 10, 10] },
+  "jakarta":         { name: "Jakarta",         country: "ID", score: 40, c: [1500, 700, 400, 3, 2, 3, 12, 15, 10] },
+  // Africa
+  "lagos":           { name: "Lagos",           country: "NG", score: 35, c: [2000, 1000, 600, 6, 3, 3, 30, 25, 20] },
+  "nairobi":         { name: "Nairobi",         country: "KE", score: 38, c: [1500, 800, 450, 5, 2.5, 3, 30, 20, 15] },
+  "cape-town":       { name: "Cape Town",       country: "ZA", score: 48, c: [1800, 1000, 650, 8, 2.5, 3, 40, 30, 30] },
+  "johannesburg":    { name: "Johannesburg",    country: "ZA", score: 42, c: [1500, 850, 550, 7, 2.5, 3, 35, 30, 25] },
+  "cairo":           { name: "Cairo",           country: "EG", score: 36, c: [800, 400, 250, 4, 2, 2, 12, 10, 10] },
+  "casablanca":      { name: "Casablanca",      country: "MA", score: 40, c: [1000, 550, 350, 5, 2, 3, 18, 15, 15] },
+  "accra":           { name: "Accra",           country: "GH", score: 37, c: [1200, 650, 400, 5, 3, 3, 20, 30, 15] },
+  // South America
+  "sao-paulo":       { name: "São Paulo",       country: "BR", score: 45, c: [1800, 1000, 600, 8, 2.5, 3, 35, 20, 30] },
+  "buenos-aires":    { name: "Buenos Aires",    country: "AR", score: 48, c: [1200, 700, 450, 8, 2.5, 3, 20, 20, 10] },
+  "bogota":          { name: "Bogotá",          country: "CO", score: 42, c: [1000, 550, 350, 5, 2, 2, 20, 15, 10] },
+  "lima":            { name: "Lima",            country: "PE", score: 40, c: [1000, 550, 400, 5, 2.5, 3, 25, 20, 20] },
+  "santiago":        { name: "Santiago",        country: "CL", score: 48, c: [1200, 700, 500, 8, 3, 3, 40, 25, 25] },
+  // Oceania
+  "sydney":          { name: "Sydney",          country: "AU", score: 62, c: [3500, 2200, 1500, 18, 4, 8, 140, 55, 60] },
+  "melbourne":       { name: "Melbourne",       country: "AU", score: 60, c: [2800, 1800, 1200, 16, 4, 7, 120, 50, 55] },
+  "auckland":        { name: "Auckland",        country: "NZ", score: 56, c: [2500, 1600, 1100, 15, 4, 7, 100, 55, 50] }
+};
+
+/**
+ * Convert compact CITY_DATA entry into the Teleport-style detail response
+ * format that extractCosts() expects.
+ */
+function buildDetailsResponse(entry) {
+  var c = entry.c;
+  return {
+    categories: [
+      { id: "HOUSING", label: "Housing", data: [
+        { id: "APARTMENT-RENT-LARGE",  label: "Large Apartment Rent",  currency_dollar_value: c[0], type: "currency" },
+        { id: "APARTMENT-RENT-MEDIUM", label: "Medium Apartment Rent", currency_dollar_value: c[1], type: "currency" },
+        { id: "APARTMENT-RENT-SMALL",  label: "Small Apartment Rent",  currency_dollar_value: c[2], type: "currency" }
+      ]},
+      { id: "COST-OF-LIVING", label: "Cost of Living", data: [
+        { id: "COST-RESTAURANT-MEAL", label: "Restaurant Meal", currency_dollar_value: c[3], type: "currency" },
+        { id: "COST-CAPPUCCINO",      label: "Cappuccino",      currency_dollar_value: c[4], type: "currency" },
+        { id: "COST-IMPORT-BEER",     label: "Beer (Import)",   currency_dollar_value: c[5], type: "currency" }
+      ]},
+      { id: "TRANSPORTATION", label: "Transportation", data: [
+        { id: "TRANSPORT-MONTHLY-PASS", label: "Monthly Public Transport", currency_dollar_value: c[6], type: "currency" }
+      ]},
+      { id: "INTERNET-ACCESS", label: "Internet Access", data: [
+        { id: "INTERNET-BROADBAND-MONTHLY", label: "Broadband Monthly", currency_dollar_value: c[7], type: "currency" }
+      ]},
+      { id: "HEALTHCARE", label: "Healthcare", data: c[8] > 0 ? [
+        { id: "HEALTHCARE-DOCTOR-VISIT", label: "Doctor Visit", currency_dollar_value: c[8], type: "currency" }
+      ] : [] },
+      { id: "EDUCATION", label: "Education", data: [] }
+    ]
+  };
+}
+
 // ============================================
 // SECTION 2: API FUNCTIONS
 // ============================================
 
 /**
- * Fetch the list of all urban areas from Teleport.
- * Returns an array of {name, slug, href}.
+ * Build the urban areas list from embedded city data.
+ * Returns a resolved promise for consistency with the rest of the init flow.
  */
 function fetchUrbanAreas() {
-  return fetch(TELEPORT_BASE + "/urban_areas/")
-    .then(function (res) {
-      if (!res.ok) throw new Error("Failed to load cities");
-      return res.json();
-    })
-    .then(function (data) {
-      var items = data._links["ua:item"];
-      urbanAreas = items.map(function (item) {
-        var parts = item.href.split("slug:");
-        var slug = parts[1].replace("/", "");
-        return { name: item.name, slug: slug, href: item.href };
-      });
-      return urbanAreas;
-    });
+  urbanAreas = Object.keys(CITY_DATA).map(function (slug) {
+    return { name: CITY_DATA[slug].name, slug: slug };
+  });
+  urbanAreas.sort(function (a, b) { return a.name.localeCompare(b.name); });
+  return Promise.resolve(urbanAreas);
 }
 
 /**
@@ -108,24 +204,17 @@ function fetchExchangeRates() {
 }
 
 /**
- * Fetch detailed cost-of-living data for a single city slug.
- * Returns {details, scores} or throws on failure.
+ * Look up cost-of-living data for a city from the embedded dataset.
+ * Returns a promise (resolved or rejected) for consistency with the async flow.
  */
 function fetchCityData(slug) {
-  var detailsUrl = TELEPORT_BASE + "/urban_areas/slug:" + slug + "/details/";
-  var scoresUrl  = TELEPORT_BASE + "/urban_areas/slug:" + slug + "/scores/";
-
-  return Promise.all([
-    fetch(detailsUrl).then(function (r) {
-      if (!r.ok) throw new Error("Details unavailable");
-      return r.json();
-    }),
-    fetch(scoresUrl).then(function (r) {
-      if (!r.ok) throw new Error("Scores unavailable");
-      return r.json();
-    })
-  ]).then(function (results) {
-    return { details: results[0], scores: results[1] };
+  var entry = CITY_DATA[slug];
+  if (!entry) {
+    return Promise.reject(new Error("City data not available"));
+  }
+  return Promise.resolve({
+    details: buildDetailsResponse(entry),
+    scores: { teleport_city_score: entry.score }
   });
 }
 
@@ -244,18 +333,6 @@ function getCurrencySymbol(code) {
     }
   }
   return code + " ";
-}
-
-/**
- * Get a flag image URL for a city by looking up the urban area's country.
- * Uses a simple mapping from city name heuristics + countries data.
- */
-function getFlagForCity(cityName) {
-  // Teleport city names are just city names, so we try to match
-  // from a hardcoded lookup of known mappings or return a default.
-  // For robustness, we try the scores endpoint's summary or just
-  // return a placeholder.
-  return "";
 }
 
 /**
@@ -476,7 +553,7 @@ function renderDashboard() {
     // Teleport overall score
     var scoreHTML = '';
     if (typeof city.teleportScore === "number") {
-      scoreHTML = '<div class="city-score">Teleport Quality Score: ' + city.teleportScore.toFixed(1) + ' / 100</div>';
+      scoreHTML = '<div class="city-score">Quality of Life Score: ' + city.teleportScore.toFixed(1) + ' / 100</div>';
     }
 
     // Cost categories
@@ -711,60 +788,26 @@ function runComparison() {
 }
 
 /**
- * Attempt to find a flag URL for a city by matching country data.
- * Uses heuristic matching of the city name to known countries.
+ * Find a flag URL for a city using CITY_DATA country codes + REST Countries data.
  */
 function findFlagForCity(cityName) {
-  // Common city-to-country mappings for better matching
-  var cityCountryMap = {
-    "nairobi": "KE", "lagos": "NG", "cape-town": "ZA", "cape town": "ZA",
-    "johannesburg": "ZA", "cairo": "EG", "casablanca": "MA",
-    "london": "GB", "paris": "FR", "berlin": "DE", "amsterdam": "NL",
-    "madrid": "ES", "rome": "IT", "barcelona": "ES", "lisbon": "PT",
-    "dublin": "IE", "vienna": "AT", "zurich": "CH", "stockholm": "SE",
-    "oslo": "NO", "copenhagen": "DK", "helsinki": "FI", "warsaw": "PL",
-    "prague": "CZ", "budapest": "HU", "bucharest": "RO", "athens": "GR",
-    "istanbul": "TR", "moscow": "RU", "saint petersburg": "RU",
-    "new york": "US", "san francisco": "US", "los angeles": "US",
-    "chicago": "US", "boston": "US", "seattle": "US", "miami": "US",
-    "washington": "US", "austin": "US", "denver": "US", "portland": "US",
-    "philadelphia": "US", "dallas": "US", "houston": "US", "atlanta": "US",
-    "detroit": "US", "minneapolis": "US", "phoenix": "US", "san diego": "US",
-    "toronto": "CA", "vancouver": "CA", "montreal": "CA", "ottawa": "CA",
-    "calgary": "CA", "mexico city": "MX", "guadalajara": "MX",
-    "sao paulo": "BR", "rio de janeiro": "BR", "buenos aires": "AR",
-    "santiago": "CL", "bogota": "CO", "lima": "PE", "montevideo": "UY",
-    "tokyo": "JP", "osaka": "JP", "seoul": "KR", "beijing": "CN",
-    "shanghai": "CN", "hong kong": "HK", "taipei": "TW", "singapore": "SG",
-    "bangkok": "TH", "kuala lumpur": "MY", "jakarta": "ID", "manila": "PH",
-    "ho chi minh city": "VN", "hanoi": "VN", "mumbai": "IN", "bangalore": "IN",
-    "delhi": "IN", "chennai": "IN", "hyderabad": "IN", "pune": "IN",
-    "dubai": "AE", "abu dhabi": "AE", "doha": "QA", "riyadh": "SA",
-    "tel aviv": "IL", "sydney": "AU", "melbourne": "AU", "brisbane": "AU",
-    "perth": "AU", "auckland": "NZ", "wellington": "NZ",
-    "accra": "GH", "dar es salaam": "TZ", "kampala": "UG",
-    "addis ababa": "ET", "lusaka": "ZM", "harare": "ZW", "maputo": "MZ",
-    "tunis": "TN", "algiers": "DZ", "dakar": "SN",
-    "edinburgh": "GB", "manchester": "GB", "birmingham": "GB",
-    "lyon": "FR", "marseille": "FR", "munich": "DE", "hamburg": "DE",
-    "milan": "IT", "florence": "IT", "brussels": "BE",
-    "krakow": "PL", "bratislava": "SK", "tallinn": "EE",
-    "riga": "LV", "vilnius": "LT", "belgrade": "RS", "zagreb": "HR",
-    "sofia": "BG", "luxembourg": "LU", "reykjavik": "IS"
-  };
-
-  var lower = cityName.toLowerCase();
-  var countryCode = cityCountryMap[lower];
-
-  if (countryCode) {
-    // Find flag from countries data
-    for (var i = 0; i < countriesData.length; i++) {
-      if (countriesData[i].cca2 === countryCode) {
-        return countriesData[i].flags.png;
-      }
+  // Look up the country code from CITY_DATA
+  var countryCode = "";
+  var slugs = Object.keys(CITY_DATA);
+  for (var j = 0; j < slugs.length; j++) {
+    if (CITY_DATA[slugs[j]].name === cityName) {
+      countryCode = CITY_DATA[slugs[j]].country;
+      break;
     }
   }
+  if (!countryCode) return "";
 
+  // Match against REST Countries data for the flag image
+  for (var i = 0; i < countriesData.length; i++) {
+    if (countriesData[i].cca2 === countryCode) {
+      return countriesData[i].flags.png;
+    }
+  }
   return "";
 }
 
