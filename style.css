@@ -1,0 +1,551 @@
+/* ============================================
+   RESET & BASE
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #f5f7fa;
+  color: #1a1a2e;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #fff;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.header-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.tagline {
+  margin-top: 0.4rem;
+  font-size: 1.05rem;
+  color: #a8b2d1;
+}
+
+/* ============================================
+   MAIN LAYOUT
+   ============================================ */
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/* ============================================
+   INPUT SECTION
+   ============================================ */
+.input-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: #444;
+}
+
+.input-group input,
+.input-group select {
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-error {
+  color: #dc2626;
+  font-size: 0.8rem;
+  min-height: 1.2rem;
+  margin-top: 0.2rem;
+}
+
+.city-search-group {
+  grid-column: 1 / -1;
+  position: relative;
+}
+
+/* Search Results Dropdown */
+.search-results {
+  list-style: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1.5px solid #d1d5db;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  display: none;
+}
+
+.search-results.open {
+  display: block;
+}
+
+.search-results li {
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+.search-results li:hover {
+  background: #eff6ff;
+}
+
+/* Selected City Chips */
+.selected-cities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.city-chip {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.city-chip img {
+  width: 18px;
+  height: 13px;
+  border-radius: 2px;
+}
+
+.chip-remove {
+  background: none;
+  border: none;
+  color: #6366f1;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+
+.chip-remove:hover {
+  color: #dc2626;
+}
+
+/* Compare Button */
+#compare-btn {
+  grid-column: 1 / -1;
+  padding: 0.7rem;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+#compare-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+#compare-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   STATUS MESSAGES
+   ============================================ */
+.status-message {
+  text-align: center;
+  padding: 0.8rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.status-message.error {
+  display: block;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.status-message.info {
+  display: block;
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.status-message.warning {
+  display: block;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+/* Retry button inside status */
+.retry-btn {
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.retry-btn:hover {
+  background: #b91c1c;
+}
+
+/* ============================================
+   LOADER
+   ============================================ */
+.loader {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  display: none;
+}
+
+.loader.active {
+  display: block;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3.5px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  margin: 0 auto 0.75rem;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   DASHBOARD CONTROLS
+   ============================================ */
+.dashboard-controls {
+  display: none;
+  margin-top: 1.5rem;
+}
+
+.dashboard-controls.visible {
+  display: block;
+}
+
+.control-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background: #fff;
+  padding: 1rem 1.2rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  align-items: flex-end;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 150px;
+}
+
+.control-group label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 0.3rem;
+}
+
+.control-group select {
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.88rem;
+}
+
+.toggle-group {
+  display: flex;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.45rem 0.7rem;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggle-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
+
+/* ============================================
+   DASHBOARD — CITY CARDS
+   ============================================ */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.2rem;
+  margin-top: 1.2rem;
+}
+
+.city-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s;
+}
+
+.city-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.city-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.city-card-header img {
+  width: 30px;
+  height: 20px;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.city-card-header h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.city-card-header .remove-city {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 0.2rem;
+}
+
+.city-card-header .remove-city:hover {
+  color: #dc2626;
+}
+
+/* Purchasing Power Gauge */
+.power-gauge {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.power-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.power-label {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.1rem;
+}
+
+.power-bar-track {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+  overflow: hidden;
+}
+
+.power-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* City Score */
+.city-score {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Category Rows */
+.category-row {
+  margin-bottom: 0.8rem;
+}
+
+.category-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.category-cost {
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.cost-bar-track {
+  width: 100%;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cost-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.bar-green { background: #22c55e; }
+.bar-yellow { background: #eab308; }
+.bar-red { background: #ef4444; }
+
+.power-green { background: #22c55e; }
+.power-yellow { background: #eab308; }
+.power-red { background: #ef4444; }
+
+.text-green { color: #16a34a; }
+.text-yellow { color: #ca8a04; }
+.text-red { color: #dc2626; }
+
+/* Category detail items */
+.category-items {
+  margin-top: 0.3rem;
+  padding-left: 0.2rem;
+}
+
+.category-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #6b7280;
+  padding: 0.15rem 0;
+}
+
+/* Card error state */
+.city-card-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+footer {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  border-top: 1px solid #e5e7eb;
+}
+
+footer a {
+  color: #6366f1;
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 640px) {
+  .input-section {
+    grid-template-columns: 1fr;
+  }
+
+  .control-row {
+    flex-direction: column;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  header {
+    padding: 1.5rem 1rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.5rem;
+  }
+}
