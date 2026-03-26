@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoveMetric — Compare Your Salary Across Cities</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <h1>MoveMetric</h1>
+      <p class="tagline">See how far your salary stretches in any city</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Input Section -->
+    <section class="input-section">
+      <div class="input-group">
+        <label for="salary-input">Monthly Salary</label>
+        <input type="number" id="salary-input" placeholder="e.g. 3000" min="1" step="any">
+        <span class="input-error" id="salary-error"></span>
+      </div>
+
+      <div class="input-group">
+        <label for="currency-select">Your Currency</label>
+        <select id="currency-select">
+          <option value="">Loading currencies...</option>
+        </select>
+      </div>
+
+      <div class="input-group city-search-group">
+        <label for="city-search">Add Cities to Compare (2–4)</label>
+        <input type="text" id="city-search" placeholder="Search for a city..." autocomplete="off">
+        <ul class="search-results" id="search-results"></ul>
+        <div class="selected-cities" id="selected-cities"></div>
+      </div>
+
+      <button id="compare-btn" disabled>Compare Cities</button>
+    </section>
+
+    <!-- Error / Status Messages -->
+    <div class="status-message" id="status-message"></div>
+
+    <!-- Loading Indicator -->
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <p>Fetching cost of living data...</p>
+    </div>
+
+    <!-- Dashboard Controls -->
+    <section class="dashboard-controls" id="dashboard-controls">
+      <div class="control-row">
+        <div class="control-group">
+          <label for="sort-select">Sort by</label>
+          <select id="sort-select">
+            <option value="affordability">Overall Affordability</option>
+            <option value="rent">Rent (Low → High)</option>
+            <option value="food">Food Cost (Low → High)</option>
+            <option value="power">Purchasing Power (High → Low)</option>
+            <option value="internet">Internet Cost (Low → High)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="filter-select">Show Category</label>
+          <select id="filter-select">
+            <option value="all">All Categories</option>
+            <option value="HOUSING">Housing</option>
+            <option value="COST-OF-LIVING">Food & Groceries</option>
+            <option value="TRANSPORTATION">Transportation</option>
+            <option value="INTERNET-ACCESS">Internet</option>
+            <option value="HEALTHCARE">Healthcare</option>
+            <option value="EDUCATION">Education</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label>Display Currency</label>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="toggle-local">Local</button>
+            <button class="toggle-btn" id="toggle-usd">USD</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- City Comparison Cards -->
+    <section class="dashboard" id="dashboard"></section>
+  </main>
+
+  <footer>
+    <p>
+      Data provided by
+      <a href="https://developers.teleport.org/api/" target="_blank" rel="noopener">Teleport API</a>,
+      <a href="https://open.er-api.com/" target="_blank" rel="noopener">ExchangeRate API</a>, and
+      <a href="https://restcountries.com/" target="_blank" rel="noopener">REST Countries API</a>.
+    </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
