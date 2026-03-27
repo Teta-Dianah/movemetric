@@ -2,7 +2,6 @@
 let apiKey = (typeof RAPIDAPI_KEY !== "undefined") ? RAPIDAPI_KEY : "";
 let apiHost = "cost-of-living-and-prices.p.rapidapi.com";
 
-// all my global variables
 let countries = [];
 let rates = null;
 let allCities = [];
@@ -12,146 +11,114 @@ let showUSD = false;
 let currency = "";
 let salary = 0;
 
-// when the page loads, set everything up
-document.addEventListener("DOMContentLoaded", async function() {
+// helper functions
+function showMsg(text, type) {
+  let el = document.getElementById("status-message");
+  el.className = "status-message " + (type || "info");
+  el.textContent = text;
+}
 
-  // get country data for flags and currency list
-  try {
-    let res = await fetch("https://restcountries.com/v3.1/all?fields=name,flags,currencies,cca2");
-    countries = await res.json();
-    fillCurrencyDropdown();
-  } catch(e) {
-    showMsg("Could not load country data.", "warning");
-  }
+function getSalaryInUSD() {
+  if (!rates || !currency) return salary;
+  return rates[currency] > 0 ? salary / rates[currency] : salary;
+}
 
-  // get city list from API
-  if (apiKey) {
-    try {
-      let res = await fetch("https://" + apiHost + "/cities", {
-        headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
-      });
-      let data = await res.json();
-      allCities = data.cities || data.data || data;
-      console.log("Loaded " + allCities.length + " cities");
-    } catch(e) {
-      showMsg("Could not load city list. Check your connection.", "error");
-    }
-  } else {
-    showMsg("No API key. Add your key in config.js", "error");
-  }
+function convertPrice(usd) {
+  if (showUSD || !rates || !currency) return usd;
+  return usd * (rates[currency] || 1);
+}
 
-  // event listeners
-  document.getElementById("city-search").addEventListener("input", function() {
-    searchCities(this.value);
-  });
+function formatMoney(amt) {
+  let code = showUSD ? "USD" : (currency || "USD");
+  return code + " " + (amt >= 1000 ? Math.round(amt).toLocaleString() : amt.toFixed(2));
+}
 
-  document.getElementById("compare-btn").addEventListener("click", doCompare);
-
-  document.getElementById("sort-select").addEventListener("change", function() {
-    if (results.length) renderCards();
-  });
-  document.getElementById("filter-select").addEventListener("change", function() {
-    if (results.length) renderCards();
-  });
-
-  // close dropdown when you click outside
-  document.addEventListener("click", function(e) {
-    if (!e.target.closest(".city-search-group")) {
-      document.getElementById("search-results").classList.remove("open");
-    }
-  });
-
-  document.getElementById("currency-select").addEventListener("change", function() {
-    currency = this.value;
-    salary = parseFloat(document.getElementById("salary-input").value) || 0;
-    if (results.length) renderCards();
-  });
-
-  // local/usd toggle
-  document.getElementById("toggle-local").addEventListener("click", function() {
-    showUSD = false;
-    this.classList.add("active");
-    document.getElementById("toggle-usd").classList.remove("active");
-    if (results.length) renderCards();
-  });
-  document.getElementById("toggle-usd").addEventListener("click", function() {
-    showUSD = true;
-    this.classList.add("active");
-    document.getElementById("toggle-local").classList.remove("active");
-    if (results.length) renderCards();
-  });
-
-  // check salary input
-  document.getElementById("salary-input").addEventListener("input", function() {
-    let val = parseFloat(this.value);
-    if (this.value && (!val || val <= 0)) {
-      document.getElementById("salary-error").textContent = "Enter a positive number.";
-    } else {
-      document.getElementById("salary-error").textContent = "";
-    }
-  });
-});
-
-
-// fill the currency dropdown with all currencies from REST Countries
-function fillCurrencyDropdown() {
-  let select = document.getElementById("currency-select");
-  let currencyList = {};
-
+function getFlag(name) {
   for (let i = 0; i < countries.length; i++) {
-    let cur = countries[i].currencies;
-    if (!cur) continue;
-    let keys = Object.keys(cur);
-    for (let j = 0; j < keys.length; j++) {
-      if (!currencyList[keys[j]]) {
-        currencyList[keys[j]] = cur[keys[j]].name || keys[j];
+    if (countries[i].name && countries[i].name.common &&
+        countries[i].name.common.toLowerCase() === name.toLowerCase())
+      return countries[i].flags.png;
+  }
+  return "";
+}
+
+// pull the prices we care about from the API response
+function extractCosts(apiData) {
+  let prices = apiData.prices || apiData.data || [];
+
+  function find(keywords) {
+    for (let i = 0; i < prices.length; i++) {
+      let name = (prices[i].item_name || prices[i].name || "").toLowerCase();
+      let ok = true;
+      for (let k = 0; k < keywords.length; k++) {
+        if (name.indexOf(keywords[k]) === -1) { ok = false; break; }
+      }
+      if (ok) {
+        if (prices[i].usd && prices[i].usd.avg) return parseFloat(prices[i].usd.avg);
+        return prices[i].avg || 0;
       }
     }
+    return 0;
   }
 
-  select.innerHTML = '<option value="">Select currency</option>';
-  let sorted = Object.keys(currencyList).sort();
-  for (let i = 0; i < sorted.length; i++) {
-    let code = sorted[i];
-    select.innerHTML += '<option value="' + code + '">' + code + ' — ' + currencyList[code] + '</option>';
+  let big = find(["three bedroom", "in city"]);
+  let med = find(["one bedroom", "in city"]);
+  let sm  = find(["one bedroom", "outside"]) || Math.round(med * 0.75);
+
+  return {
+    HOUSING:   { label: "Housing",          total: big+med+sm, items: [{l:"Large Apartment (3br)", v:big}, {l:"Medium Apartment (1br)", v:med}, {l:"Small Apartment (outside)", v:sm}] },
+    FOOD:      { label: "Food & Daily Life", total: find(["meal","inexpensive"]) + find(["cappuccino"]) + find(["imported beer"]), items: [{l:"Restaurant Meal", v:find(["meal","inexpensive"])}, {l:"Cappuccino", v:find(["cappuccino"])}, {l:"Beer (Imported)", v:find(["imported beer"])}] },
+    TRANSPORT: { label: "Transportation",    total: find(["monthly pass"]), items: [{l:"Monthly Transport Pass", v:find(["monthly pass"])}] },
+    INTERNET:  { label: "Internet",          total: find(["internet"]),     items: [{l:"Broadband Monthly", v:find(["internet"])}] },
+    HEALTH:    { label: "Healthcare",        total: find(["doctor visit"]), items: find(["doctor visit"]) > 0 ? [{l:"Doctor Visit", v:find(["doctor visit"])}] : [] }
+  };
+}
+
+// how much of your salary is left after basic expenses
+function getPower(costs, sal) {
+  let rent = costs.HOUSING.items[1] ? costs.HOUSING.items[1].v : 0;
+  let food = costs.FOOD.items[0] ? costs.FOOD.items[0].v * 30 : 0;
+  let expenses = rent + food + costs.TRANSPORT.total + costs.INTERNET.total;
+  if (sal <= 0) return 0;
+  return Math.max(0, Math.round(((sal - expenses) / sal) * 100));
+}
+
+// fill currency dropdown
+function fillCurrencies() {
+  let sel = document.getElementById("currency-select");
+  let list = {};
+  for (let i = 0; i < countries.length; i++) {
+    if (!countries[i].currencies) continue;
+    let keys = Object.keys(countries[i].currencies);
+    for (let j = 0; j < keys.length; j++)
+      if (!list[keys[j]]) list[keys[j]] = countries[i].currencies[keys[j]].name || keys[j];
   }
-  select.value = "USD";
+  sel.innerHTML = '<option value="">Select currency</option>';
+  let sorted = Object.keys(list).sort();
+  for (let i = 0; i < sorted.length; i++)
+    sel.innerHTML += '<option value="' + sorted[i] + '">' + sorted[i] + ' — ' + list[sorted[i]] + '</option>';
+  sel.value = "USD";
   currency = "USD";
 }
 
-
-// search cities as user types
+// city search dropdown
 function searchCities(query) {
   let ul = document.getElementById("search-results");
   ul.innerHTML = "";
-
-  if (!query || query.length < 2) {
-    ul.classList.remove("open");
-    return;
-  }
+  if (!query || query.length < 2) { ul.classList.remove("open"); return; }
 
   let q = query.toLowerCase();
-  let count = 0;
   let found = [];
-
-  for (let i = 0; i < allCities.length; i++) {
-    if (count >= 8) break;
-    let city = allCities[i];
-
-    // skip if already picked
-    let alreadyPicked = false;
-    for (let j = 0; j < picked.length; j++) {
-      if (picked[j].id === city.city_id) { alreadyPicked = true; break; }
-    }
-    if (alreadyPicked) continue;
-
-    if (city.city_name.toLowerCase().includes(q)) {
-      found.push(city);
-      count++;
-    }
+  for (let i = 0; i < allCities.length && found.length < 8; i++) {
+    let c = allCities[i];
+    let taken = false;
+    for (let j = 0; j < picked.length; j++)
+      if (picked[j].id === c.city_id) taken = true;
+    if (!taken && c.city_name.toLowerCase().includes(q))
+      found.push(c);
   }
 
-  if (found.length === 0) {
+  if (!found.length) {
     ul.innerHTML = '<li style="color:#999">No cities found</li>';
     ul.classList.add("open");
     return;
@@ -160,52 +127,36 @@ function searchCities(query) {
   for (let i = 0; i < found.length; i++) {
     let li = document.createElement("li");
     li.textContent = found[i].city_name + ", " + found[i].country_name;
-
-    // need this so the click handler gets the right city
-    li.setAttribute("data-index", i);
+    li.setAttribute("data-i", i);
     li.addEventListener("click", function() {
-      let idx = parseInt(this.getAttribute("data-index"));
-      let c = found[idx];
-      addCity(c);
+      addCity(found[parseInt(this.getAttribute("data-i"))]);
       ul.classList.remove("open");
       document.getElementById("city-search").value = "";
     });
-
     ul.appendChild(li);
   }
   ul.classList.add("open");
 }
 
-
 function addCity(city) {
-  if (picked.length >= 4) {
-    showMsg("Max 4 cities.", "warning");
-    return;
-  }
+  if (picked.length >= 4) { showMsg("Max 4 cities.", "warning"); return; }
   picked.push({ id: city.city_id, name: city.city_name, country: city.country_name });
   showChips();
   document.getElementById("compare-btn").disabled = picked.length < 2;
 }
 
-function removeCity(cityId) {
-  let newPicked = [];
-  for (let i = 0; i < picked.length; i++) {
-    if (picked[i].id !== cityId) newPicked.push(picked[i]);
-  }
+function removeCity(id) {
+  let newPicked = [], newResults = [];
+  for (let i = 0; i < picked.length; i++)
+    if (picked[i].id !== id) newPicked.push(picked[i]);
+  for (let i = 0; i < results.length; i++)
+    if (results[i].id !== id) newResults.push(results[i]);
   picked = newPicked;
-
-  let newResults = [];
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].id !== cityId) newResults.push(results[i]);
-  }
   results = newResults;
-
   showChips();
   document.getElementById("compare-btn").disabled = picked.length < 2;
-
-  if (results.length > 0) {
-    renderCards();
-  } else {
+  if (results.length) renderCards();
+  else {
     document.getElementById("dashboard").innerHTML = "";
     document.getElementById("dashboard-controls").classList.remove("visible");
   }
@@ -220,116 +171,12 @@ function showChips() {
     chip.innerHTML = '<span>' + picked[i].name + '</span><button class="chip-remove" data-id="' + picked[i].id + '">&times;</button>';
     box.appendChild(chip);
   }
-  // add click handlers to remove buttons
-  let buttons = box.querySelectorAll(".chip-remove");
-  for (let i = 0; i < buttons.length; i++) {
-    buttons[i].addEventListener("click", function() {
-      removeCity(parseInt(this.getAttribute("data-id")));
-    });
-  }
+  let btns = box.querySelectorAll(".chip-remove");
+  for (let i = 0; i < btns.length; i++)
+    btns[i].addEventListener("click", function() { removeCity(parseInt(this.getAttribute("data-id"))); });
 }
 
-
-// this takes the API response and pulls out the prices we need
-function extractCosts(apiData) {
-  let prices = apiData.prices || apiData.data || [];
-
-  // helper to search for a price by keywords
-  function findItem(keywords) {
-    for (let i = 0; i < prices.length; i++) {
-      let itemName = (prices[i].item_name || prices[i].name || "").toLowerCase();
-      let found = true;
-      for (let k = 0; k < keywords.length; k++) {
-        if (itemName.indexOf(keywords[k]) === -1) {
-          found = false;
-          break;
-        }
-      }
-      if (found) {
-        // the API gives us USD prices in usd.avg
-        if (prices[i].usd && prices[i].usd.avg) return parseFloat(prices[i].usd.avg);
-        return prices[i].avg || 0;
-      }
-    }
-    return 0;
-  }
-
-  let bigRent   = findItem(["three bedroom", "in city"]);
-  let medRent   = findItem(["one bedroom", "in city"]);
-  let smallRent = findItem(["one bedroom", "outside"]);
-  if (smallRent === 0) smallRent = Math.round(medRent * 0.75); // estimate if missing
-
-  let meal    = findItem(["meal", "inexpensive"]);
-  let coffee  = findItem(["cappuccino"]);
-  let beer    = findItem(["imported beer"]);
-  let transit = findItem(["monthly pass"]);
-  let wifi    = findItem(["internet"]);
-  let doctor  = findItem(["doctor visit"]);
-
-  return {
-    HOUSING:   { label: "Housing",          total: bigRent + medRent + smallRent, items: [{l: "Large Apartment (3br)", v: bigRent}, {l: "Medium Apartment (1br)", v: medRent}, {l: "Small Apartment (outside)", v: smallRent}] },
-    FOOD:      { label: "Food & Daily Life", total: meal + coffee + beer,         items: [{l: "Restaurant Meal", v: meal}, {l: "Cappuccino", v: coffee}, {l: "Beer (Imported)", v: beer}] },
-    TRANSPORT: { label: "Transportation",    total: transit,                       items: [{l: "Monthly Transport Pass", v: transit}] },
-    INTERNET:  { label: "Internet",          total: wifi,                          items: [{l: "Broadband Monthly", v: wifi}] },
-    HEALTH:    { label: "Healthcare",        total: doctor,                        items: doctor > 0 ? [{l: "Doctor Visit", v: doctor}] : [] }
-  };
-}
-
-
-// convert salary to USD using exchange rate
-function getSalaryInUSD() {
-  if (!rates || !currency) return salary;
-  let rate = rates[currency];
-  if (rate > 0) return salary / rate;
-  return salary;
-}
-
-// convert a USD price to the users currency
-function convertPrice(usdAmount) {
-  if (showUSD || !rates || !currency) return usdAmount;
-  return usdAmount * (rates[currency] || 1);
-}
-
-// format number as money
-function formatMoney(amount) {
-  let code = showUSD ? "USD" : (currency || "USD");
-  if (amount >= 1000) return code + " " + Math.round(amount).toLocaleString();
-  return code + " " + amount.toFixed(2);
-}
-
-// calculate purchasing power - how much salary is left after rent, food, transport, internet
-function getPurchasingPower(costs, salaryUSD) {
-  let rent = costs.HOUSING.items[1] ? costs.HOUSING.items[1].v : 0; // 1br apartment
-  let food = costs.FOOD.items[0] ? costs.FOOD.items[0].v * 30 : 0;  // meals per month
-  let transport = costs.TRANSPORT.total;
-  let internet = costs.INTERNET.total;
-  let monthlyExpenses = rent + food + transport + internet;
-
-  if (salaryUSD <= 0) return 0;
-  let remaining = (salaryUSD - monthlyExpenses) / salaryUSD;
-  return Math.max(0, Math.round(remaining * 100));
-}
-
-// get flag URL for a country
-function getFlag(countryName) {
-  for (let i = 0; i < countries.length; i++) {
-    if (countries[i].name && countries[i].name.common) {
-      if (countries[i].name.common.toLowerCase() === countryName.toLowerCase()) {
-        return countries[i].flags.png;
-      }
-    }
-  }
-  return "";
-}
-
-function showMsg(text, type) {
-  let el = document.getElementById("status-message");
-  el.className = "status-message " + (type || "info");
-  el.textContent = text;
-}
-
-
-// main compare function
+// main compare - gets exchange rates then fetches prices for each city
 async function doCompare() {
   salary = parseFloat(document.getElementById("salary-input").value);
   if (!salary || salary <= 0) {
@@ -338,180 +185,184 @@ async function doCompare() {
   }
   document.getElementById("salary-error").textContent = "";
   currency = document.getElementById("currency-select").value;
-
   if (!currency) { showMsg("Select a currency.", "warning"); return; }
   if (picked.length < 2) { showMsg("Pick at least 2 cities.", "warning"); return; }
 
-  // clear old stuff
   document.getElementById("status-message").textContent = "";
   document.getElementById("status-message").className = "status-message";
   document.getElementById("loader").classList.add("active");
   document.getElementById("dashboard").innerHTML = "";
 
-  // get exchange rates first (only once)
+  // get exchange rates (only need to do this once)
   if (!rates) {
     try {
       let res = await fetch("https://open.er-api.com/v6/latest/USD");
       let data = await res.json();
-      if (data.result === "success") {
-        rates = data.rates;
-        console.log("Got exchange rates");
-      }
+      if (data.result === "success") rates = data.rates;
     } catch(e) {
       showMsg("Currency conversion failed. Showing USD.", "warning");
       showUSD = true;
     }
   }
 
-  // now fetch prices for each city
+  // fetch prices for each city
   results = [];
   for (let i = 0; i < picked.length; i++) {
     try {
-      let url = "https://" + apiHost + "/prices"
-        + "?city_name=" + encodeURIComponent(picked[i].name)
+      let url = "https://" + apiHost + "/prices?city_name=" + encodeURIComponent(picked[i].name)
         + "&country_name=" + encodeURIComponent(picked[i].country);
-
       let res = await fetch(url, {
         headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
       });
       let data = await res.json();
       let costs = extractCosts(data);
-
       results.push({
-        id: picked[i].id,
-        name: picked[i].name,
-        country: picked[i].country,
-        costs: costs,
-        power: getPurchasingPower(costs, getSalaryInUSD()),
-        flag: getFlag(picked[i].country)
+        id: picked[i].id, name: picked[i].name, country: picked[i].country,
+        costs: costs, power: getPower(costs, getSalaryInUSD()), flag: getFlag(picked[i].country)
       });
     } catch(e) {
-      console.log("Failed to get data for " + picked[i].name);
+      console.log("Couldnt get data for " + picked[i].name);
     }
   }
 
   document.getElementById("loader").classList.remove("active");
-
-  if (results.length === 0) {
-    showMsg("Could not load data. Check your connection.", "error");
-    return;
-  }
-
+  if (!results.length) { showMsg("Could not load data. Check your connection.", "error"); return; }
   document.getElementById("dashboard-controls").classList.add("visible");
   renderCards();
 }
 
-
-// draw the comparison cards on the page
+// draw the city cards
 function renderCards() {
-  let dashboard = document.getElementById("dashboard");
-  dashboard.innerHTML = "";
-  if (results.length === 0) return;
+  let box = document.getElementById("dashboard");
+  box.innerHTML = "";
+  if (!results.length) return;
 
-  let salUSD = getSalaryInUSD();
-  let categories = ["HOUSING", "FOOD", "TRANSPORT", "INTERNET", "HEALTH"];
+  let sal = getSalaryInUSD();
+  let cats = ["HOUSING", "FOOD", "TRANSPORT", "INTERNET", "HEALTH"];
+  for (let i = 0; i < results.length; i++)
+    results[i].power = getPower(results[i].costs, sal);
 
-  // update purchasing power
-  for (let i = 0; i < results.length; i++) {
-    results[i].power = getPurchasingPower(results[i].costs, salUSD);
-  }
-
-  // sorting
+  // sort
   let sortBy = document.getElementById("sort-select").value;
   results.sort(function(a, b) {
     if (sortBy === "rent") return a.costs.HOUSING.items[1].v - b.costs.HOUSING.items[1].v;
     if (sortBy === "food") return a.costs.FOOD.total - b.costs.FOOD.total;
     if (sortBy === "internet") return a.costs.INTERNET.total - b.costs.INTERNET.total;
     if (sortBy === "power") return b.power - a.power;
-
-    // default sort by total cost
-    let totalA = 0, totalB = 0;
-    for (let i = 0; i < categories.length; i++) {
-      totalA += a.costs[categories[i]].total;
-      totalB += b.costs[categories[i]].total;
-    }
-    return totalA - totalB;
+    let ta = 0, tb = 0;
+    for (let i = 0; i < cats.length; i++) { ta += a.costs[cats[i]].total; tb += b.costs[cats[i]].total; }
+    return ta - tb;
   });
 
-  // figure out the max cost in each category (for the bar widths)
-  let filterValue = document.getElementById("filter-select").value;
-  let maxInCategory = {};
-  for (let i = 0; i < results.length; i++) {
-    for (let k = 0; k < categories.length; k++) {
-      let catId = categories[k];
-      let total = results[i].costs[catId].total;
-      if (!maxInCategory[catId] || total > maxInCategory[catId]) {
-        maxInCategory[catId] = total;
-      }
+  // get max cost per category for bar widths
+  let filter = document.getElementById("filter-select").value;
+  let maxCost = {};
+  for (let i = 0; i < results.length; i++)
+    for (let k = 0; k < cats.length; k++) {
+      let t = results[i].costs[cats[k]].total;
+      if (!maxCost[cats[k]] || t > maxCost[cats[k]]) maxCost[cats[k]] = t;
     }
-  }
 
-  // build a card for each city
+  // build each card
   for (let i = 0; i < results.length; i++) {
     let city = results[i];
     let card = document.createElement("div");
     card.className = "city-card";
 
-    // power gauge color
-    let powerColor = "red";
-    if (city.power >= 50) powerColor = "green";
-    else if (city.power >= 25) powerColor = "yellow";
+    let pc = city.power >= 50 ? "green" : city.power >= 25 ? "yellow" : "red";
 
-    // start building the HTML
-    let html = '<div class="city-card-header">';
-    if (city.flag) html += '<img src="' + city.flag + '" alt="">';
-    html += '<h3>' + city.name + ' <small style="font-weight:normal;font-size:0.8em;opacity:0.65">' + city.country + '</small></h3>';
-    html += '<button class="remove-city" data-id="' + city.id + '">&times;</button></div>';
+    let h = '<div class="city-card-header">';
+    if (city.flag) h += '<img src="' + city.flag + '" alt="">';
+    h += '<h3>' + city.name + ' <small style="font-weight:normal;font-size:0.8em;opacity:0.65">' + city.country + '</small></h3>';
+    h += '<button class="remove-city" data-id="' + city.id + '">&times;</button></div>';
 
-    html += '<div class="power-gauge">';
-    html += '<div class="power-value text-' + powerColor + '">' + city.power + '%</div>';
-    html += '<div class="power-label">of salary remaining after basics</div>';
-    html += '<div class="power-bar-track"><div class="power-bar-fill power-' + powerColor + '" style="width:' + city.power + '%"></div></div>';
-    html += '</div>';
+    h += '<div class="power-gauge">';
+    h += '<div class="power-value text-' + pc + '">' + city.power + '%</div>';
+    h += '<div class="power-label">of salary remaining after basics</div>';
+    h += '<div class="power-bar-track"><div class="power-bar-fill power-' + pc + '" style="width:' + city.power + '%"></div></div></div>';
 
-    // add each cost category
-    for (let k = 0; k < categories.length; k++) {
-      let catId = categories[k];
-      if (filterValue !== "all" && filterValue !== catId) continue;
+    for (let k = 0; k < cats.length; k++) {
+      let id = cats[k];
+      if (filter !== "all" && filter !== id) continue;
+      let cat = city.costs[id];
+      if (!cat.items.length) continue;
 
-      let cat = city.costs[catId];
-      if (cat.items.length === 0) continue;
+      let w = maxCost[id] > 0 ? Math.round(cat.total / maxCost[id] * 100) : 0;
+      let col = w < 40 ? "green" : w < 75 ? "yellow" : "red";
 
-      // bar width is relative to the most expensive city
-      let barWidth = 0;
-      if (maxInCategory[catId] > 0) {
-        barWidth = Math.round(cat.total / maxInCategory[catId] * 100);
-      }
-
-      // pick color - green if cheap, yellow if mid, red if expensive
-      let barColor = "red";
-      if (barWidth < 40) barColor = "green";
-      else if (barWidth < 75) barColor = "yellow";
-
-      html += '<div class="category-row">';
-      html += '<div class="category-label"><span>' + cat.label + '</span>';
-      html += '<span class="category-cost">' + formatMoney(convertPrice(cat.total)) + '</span></div>';
-      html += '<div class="cost-bar-track"><div class="cost-bar-fill bar-' + barColor + '" style="width:' + barWidth + '%"></div></div>';
-
-      // individual items
-      html += '<div class="category-items">';
-      for (let j = 0; j < cat.items.length; j++) {
-        html += '<div class="category-item">';
-        html += '<span>' + cat.items[j].l + '</span>';
-        html += '<span>' + formatMoney(convertPrice(cat.items[j].v)) + '</span>';
-        html += '</div>';
-      }
-      html += '</div></div>';
+      h += '<div class="category-row">';
+      h += '<div class="category-label"><span>' + cat.label + '</span><span class="category-cost">' + formatMoney(convertPrice(cat.total)) + '</span></div>';
+      h += '<div class="cost-bar-track"><div class="cost-bar-fill bar-' + col + '" style="width:' + w + '%"></div></div>';
+      h += '<div class="category-items">';
+      for (let j = 0; j < cat.items.length; j++)
+        h += '<div class="category-item"><span>' + cat.items[j].l + '</span><span>' + formatMoney(convertPrice(cat.items[j].v)) + '</span></div>';
+      h += '</div></div>';
     }
 
-    card.innerHTML = html;
-
-    // remove button click
-    let removeBtn = card.querySelector(".remove-city");
-    removeBtn.addEventListener("click", function() {
+    card.innerHTML = h;
+    card.querySelector(".remove-city").addEventListener("click", function() {
       removeCity(parseInt(this.getAttribute("data-id")));
     });
-
-    dashboard.appendChild(card);
+    box.appendChild(card);
   }
 }
+
+// start everything when page loads
+document.addEventListener("DOMContentLoaded", async function() {
+  try {
+    let res = await fetch("https://restcountries.com/v3.1/all?fields=name,flags,currencies,cca2");
+    countries = await res.json();
+    fillCurrencies();
+  } catch(e) {
+    showMsg("Could not load country data.", "warning");
+  }
+
+  if (apiKey) {
+    try {
+      let res = await fetch("https://" + apiHost + "/cities", {
+        headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
+      });
+      let data = await res.json();
+      allCities = data.cities || data.data || data;
+      console.log("loaded " + allCities.length + " cities");
+    } catch(e) {
+      showMsg("Could not load cities.", "error");
+    }
+  } else {
+    showMsg("No API key. Add it in config.js", "error");
+  }
+
+  document.getElementById("city-search").addEventListener("input", function() { searchCities(this.value); });
+  document.getElementById("compare-btn").addEventListener("click", doCompare);
+  document.getElementById("sort-select").addEventListener("change", function() { if (results.length) renderCards(); });
+  document.getElementById("filter-select").addEventListener("change", function() { if (results.length) renderCards(); });
+
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest(".city-search-group"))
+      document.getElementById("search-results").classList.remove("open");
+  });
+
+  document.getElementById("currency-select").addEventListener("change", function() {
+    currency = this.value;
+    salary = parseFloat(document.getElementById("salary-input").value) || 0;
+    if (results.length) renderCards();
+  });
+
+  document.getElementById("toggle-local").addEventListener("click", function() {
+    showUSD = false;
+    this.classList.add("active");
+    document.getElementById("toggle-usd").classList.remove("active");
+    if (results.length) renderCards();
+  });
+  document.getElementById("toggle-usd").addEventListener("click", function() {
+    showUSD = true;
+    this.classList.add("active");
+    document.getElementById("toggle-local").classList.remove("active");
+    if (results.length) renderCards();
+  });
+
+  document.getElementById("salary-input").addEventListener("input", function() {
+    let v = parseFloat(this.value);
+    document.getElementById("salary-error").textContent = (this.value && (!v || v <= 0)) ? "Enter a positive number." : "";
+  });
+});
