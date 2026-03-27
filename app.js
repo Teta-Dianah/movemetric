@@ -1,12 +1,12 @@
 // globals
-var countriesData = [], exchangeRates = null;
-var selectedCities = [], comparisonData = [];
-var showUSD = false, userCurrency = "", userSalary = 0;
-var cats = ["HOUSING", "FOOD", "TRANSPORT", "INTERNET", "HEALTH"];
+let countriesData = [], exchangeRates = null;
+let selectedCities = [], comparisonData = [];
+let showUSD = false, userCurrency = "", userSalary = 0;
+let cats = ["HOUSING", "FOOD", "TRANSPORT", "INTERNET", "HEALTH"];
 
 // city cost data (USD/month) from Numbeo public indices
 // [lgRent, mdRent, smRent, meal, coffee, beer, transport, internet, doctor]
-var cities = {
+let cities = {
   "new-york":      {n:"New York",      co:"US", s:62, c:[4200,3000,2200,25,5.5,9,132,65,200]},
   "san-francisco": {n:"San Francisco", co:"US", s:68, c:[4500,3200,2400,22,5.5,8,98,60,200]},
   "los-angeles":   {n:"Los Angeles",   co:"US", s:58, c:[3500,2500,1800,20,5,8,100,55,180]},
@@ -49,7 +49,7 @@ var cities = {
 
 // get cost breakdown from compact data
 function getCosts(slug) {
-  var c = cities[slug].c;
+  let c = cities[slug].c;
   return {
     HOUSING:   {label:"Housing",         total:c[0]+c[1]+c[2], items:[{l:"Large Apartment",v:c[0]},{l:"Medium Apartment",v:c[1]},{l:"Small Apartment",v:c[2]}]},
     FOOD:      {label:"Food & Daily Life",total:c[3]+c[4]+c[5], items:[{l:"Restaurant Meal",v:c[3]},{l:"Cappuccino",v:c[4]},{l:"Beer (Import)",v:c[5]}]},
@@ -61,7 +61,7 @@ function getCosts(slug) {
 
 // purchasing power = % salary left after rent + transport + food
 function calcPower(costs, sal) {
-  var exp = costs.HOUSING.items[1].v + costs.TRANSPORT.total + costs.FOOD.items[0].v * 30;
+  let exp = costs.HOUSING.items[1].v + costs.TRANSPORT.total + costs.FOOD.items[0].v * 30;
   return sal <= 0 ? 0 : Math.max(0, Math.round(((sal - exp) / sal) * 100));
 }
 
@@ -73,46 +73,46 @@ function convert(usd) {
 
 function salaryInUSD() {
   if (!exchangeRates || !userCurrency) return userSalary;
-  var r = exchangeRates.rates[userCurrency];
+  let r = exchangeRates.rates[userCurrency];
   return r > 0 ? userSalary / r : userSalary;
 }
 
 function money(amt) {
-  var code = (showUSD ? "USD" : userCurrency) || "USD";
-  var sym = code + " ";
-  for (var i = 0; i < countriesData.length; i++) {
-    var cur = countriesData[i].currencies;
+  let code = (showUSD ? "USD" : userCurrency) || "USD";
+  let sym = code + " ";
+  for (let i = 0; i < countriesData.length; i++) {
+    let cur = countriesData[i].currencies;
     if (cur && cur[code] && cur[code].symbol) { sym = cur[code].symbol; break; }
   }
   return amt >= 1000 ? sym + Math.round(amt).toLocaleString() : sym + amt.toFixed(2);
 }
 
 function getFlag(name) {
-  var code = "";
-  for (var s in cities) { if (cities[s].n === name) { code = cities[s].co; break; } }
+  let code = "";
+  for (let s in cities) { if (cities[s].n === name) { code = cities[s].co; break; } }
   if (!code) return "";
-  for (var i = 0; i < countriesData.length; i++) {
+  for (let i = 0; i < countriesData.length; i++) {
     if (countriesData[i].cca2 === code) return countriesData[i].flags.png;
   }
   return "";
 }
 
-function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function esc(s) { let d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
 // show a message to the user
 function msg(text, type) {
-  var el = document.getElementById("status-message");
+  let el = document.getElementById("status-message");
   el.className = "status-message " + (type || "info");
   el.innerHTML = esc(text);
 }
 function clearMsg() {
-  var el = document.getElementById("status-message");
+  let el = document.getElementById("status-message");
   el.className = "status-message"; el.innerHTML = "";
 }
 
 // populate currency dropdown from REST Countries data
 function fillCurrencySelect() {
-  var sel = document.getElementById("currency-select"), list = {};
+  let sel = document.getElementById("currency-select"), list = {};
   countriesData.forEach(function(c) {
     if (!c.currencies) return;
     Object.keys(c.currencies).forEach(function(k) { if (!list[k]) list[k] = c.currencies[k].name || k; });
@@ -126,19 +126,19 @@ function fillCurrencySelect() {
 
 // city search dropdown
 function search(q) {
-  var ul = document.getElementById("search-results");
+  let ul = document.getElementById("search-results");
   ul.innerHTML = "";
   if (!q || q.length < 2) { ul.classList.remove("open"); return; }
-  var low = q.toLowerCase();
-  var cityList = Object.keys(cities).map(function(s) { return {name: cities[s].n, slug: s}; });
-  var hits = cityList.filter(function(c) {
-    var taken = selectedCities.some(function(s) { return s.slug === c.slug; });
+  let low = q.toLowerCase();
+  let cityList = Object.keys(cities).map(function(s) { return {name: cities[s].n, slug: s}; });
+  let hits = cityList.filter(function(c) {
+    let taken = selectedCities.some(function(s) { return s.slug === c.slug; });
     return !taken && c.name.toLowerCase().indexOf(low) !== -1;
   }).slice(0, 8);
 
   if (!hits.length) { ul.innerHTML = '<li style="color:#999">No cities found.</li>'; ul.classList.add("open"); return; }
   hits.forEach(function(city) {
-    var li = document.createElement("li");
+    let li = document.createElement("li");
     li.textContent = city.name;
     li.onclick = function() { addCity(city); ul.classList.remove("open"); document.getElementById("city-search").value = ""; };
     ul.appendChild(li);
@@ -163,10 +163,10 @@ function removeCity(slug) {
 }
 
 function renderChips() {
-  var box = document.getElementById("selected-cities");
+  let box = document.getElementById("selected-cities");
   box.innerHTML = "";
   selectedCities.forEach(function(city) {
-    var chip = document.createElement("span");
+    let chip = document.createElement("span");
     chip.className = "city-chip";
     chip.innerHTML = '<span>'+esc(city.name)+'</span><button class="chip-remove">&times;</button>';
     chip.querySelector("button").onclick = function() { removeCity(city.slug); };
@@ -188,7 +188,7 @@ function compare() {
   document.getElementById("dashboard").innerHTML = "";
   document.getElementById("dashboard-controls").classList.remove("visible");
 
-  var p = exchangeRates ? Promise.resolve() : fetch("https://open.er-api.com/v6/latest/USD")
+  let p = exchangeRates ? Promise.resolve() : fetch("https://open.er-api.com/v6/latest/USD")
     .then(function(r) { return r.json(); })
     .then(function(d) { if (d.result === "success") exchangeRates = d; })
     .catch(function() { msg("Currency conversion unavailable. Showing USD.", "warning"); showUSD = true; });
@@ -196,10 +196,10 @@ function compare() {
   p.then(function() {
     document.getElementById("loader").classList.remove("active");
     comparisonData = [];
-    var sal = salaryInUSD();
+    let sal = salaryInUSD();
     selectedCities.forEach(function(city) {
       if (!cities[city.slug]) return;
-      var costs = getCosts(city.slug);
+      let costs = getCosts(city.slug);
       comparisonData.push({ slug:city.slug, name:city.name, costs:costs, power:calcPower(costs,sal), score:cities[city.slug].s, flag:getFlag(city.name) });
     });
     if (!comparisonData.length) { msg("No data available.", "error"); return; }
@@ -210,43 +210,47 @@ function compare() {
 
 // render dashboard cards
 function renderDashboard() {
-  var box = document.getElementById("dashboard");
+  let box = document.getElementById("dashboard");
   box.innerHTML = "";
   if (!comparisonData.length) return;
 
+  // recalc power with current currency
+  let sal = salaryInUSD();
+  comparisonData.forEach(function(city) { city.power = calcPower(city.costs, sal); });
+
   // sort
-  var by = document.getElementById("sort-select").value;
+  let by = document.getElementById("sort-select").value;
   comparisonData.sort(function(a, b) {
     if (by === "rent") return a.costs.HOUSING.items[1].v - b.costs.HOUSING.items[1].v;
     if (by === "food") return a.costs.FOOD.total - b.costs.FOOD.total;
     if (by === "internet") return a.costs.INTERNET.total - b.costs.INTERNET.total;
     if (by === "power") return b.power - a.power;
-    var ta = 0, tb = 0;
+    let ta = 0, tb = 0;
     cats.forEach(function(k) { ta += a.costs[k].total; tb += b.costs[k].total; });
     return ta - tb;
   });
 
-  var filter = document.getElementById("filter-select").value;
-  var maxC = {};
+  let filter = document.getElementById("filter-select").value;
+  let maxC = {};
   comparisonData.forEach(function(city) { cats.forEach(function(id) { if (!maxC[id] || city.costs[id].total > maxC[id]) maxC[id] = city.costs[id].total; }); });
 
   comparisonData.forEach(function(city) {
-    var card = document.createElement("div");
+    let card = document.createElement("div");
     card.className = "city-card";
-    var pw = city.power, pc = pw >= 50 ? "green" : pw >= 25 ? "yellow" : "red";
+    let pw = city.power, pc = pw >= 50 ? "green" : pw >= 25 ? "yellow" : "red";
 
-    var h = '<div class="city-card-header">'+(city.flag?'<img src="'+city.flag+'" alt="">':'')+'<h3>'+esc(city.name)+'</h3><button class="remove-city">&times;</button></div>';
+    let h = '<div class="city-card-header">'+(city.flag?'<img src="'+city.flag+'" alt="">':'')+'<h3>'+esc(city.name)+'</h3><button class="remove-city">&times;</button></div>';
     h += '<div class="power-gauge"><div class="power-value text-'+pc+'">'+pw+'%</div><div class="power-label">of salary remaining after basics</div>';
     h += '<div class="power-bar-track"><div class="power-bar-fill power-'+pc+'" style="width:'+pw+'%"></div></div></div>';
     if (city.score) h += '<div class="city-score">Quality of Life: '+city.score+'/100</div>';
 
     cats.forEach(function(id) {
       if (filter !== "all" && filter !== id) return;
-      var cat = city.costs[id];
+      let cat = city.costs[id];
       if (!cat.items.length) return;
-      var pct = maxC[id] > 0 ? cat.total / maxC[id] * 100 : 0;
-      var r = maxC[id] > 0 ? cat.total / maxC[id] : 0;
-      var col = r < 0.4 ? "green" : r < 0.7 ? "yellow" : "red";
+      let pct = maxC[id] > 0 ? cat.total / maxC[id] * 100 : 0;
+      let r = sal > 0 ? cat.total / sal : 0;
+      let col = r < 0.15 ? "green" : r < 0.35 ? "yellow" : "red";
       h += '<div class="category-row"><div class="category-label"><span>'+cat.label+'</span><span class="category-cost">'+money(convert(cat.total))+'</span></div>';
       h += '<div class="cost-bar-track"><div class="cost-bar-fill bar-'+col+'" style="width:'+Math.round(pct)+'%"></div></div><div class="category-items">';
       cat.items.forEach(function(it) { h += '<div class="category-item"><span>'+esc(it.l)+'</span><span>'+money(convert(it.v))+'</span></div>'; });
@@ -270,11 +274,11 @@ document.addEventListener("DOMContentLoaded", function() {
   // events
   document.getElementById("city-search").addEventListener("input", function() { search(this.value); });
   document.addEventListener("click", function(e) { if (!e.target.closest(".city-search-group")) document.getElementById("search-results").classList.remove("open"); });
-  document.getElementById("currency-select").addEventListener("change", function() { userCurrency = this.value; if (comparisonData.length) renderDashboard(); });
+  document.getElementById("currency-select").addEventListener("change", function() { userCurrency = this.value; userSalary = parseFloat(document.getElementById("salary-input").value) || 0; if (comparisonData.length) renderDashboard(); });
   document.getElementById("compare-btn").addEventListener("click", compare);
   document.getElementById("sort-select").addEventListener("change", function() { if (comparisonData.length) renderDashboard(); });
   document.getElementById("filter-select").addEventListener("change", function() { if (comparisonData.length) renderDashboard(); });
   document.getElementById("toggle-local").addEventListener("click", function() { showUSD=false; this.classList.add("active"); document.getElementById("toggle-usd").classList.remove("active"); if(comparisonData.length) renderDashboard(); });
   document.getElementById("toggle-usd").addEventListener("click", function() { showUSD=true; this.classList.add("active"); document.getElementById("toggle-local").classList.remove("active"); if(comparisonData.length) renderDashboard(); });
-  document.getElementById("salary-input").addEventListener("input", function() { var v=parseFloat(this.value); document.getElementById("salary-error").textContent=(this.value&&(!v||v<=0))?"Enter a positive number.":""; });
+  document.getElementById("salary-input").addEventListener("input", function() { let v=parseFloat(this.value); document.getElementById("salary-error").textContent=(this.value&&(!v||v<=0))?"Enter a positive number.":""; });
 });
