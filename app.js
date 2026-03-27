@@ -346,7 +346,10 @@ document.addEventListener("DOMContentLoaded", async function() {
   document.getElementById("currency-select").addEventListener("change", function() {
     currency = this.value;
     salary = parseFloat(document.getElementById("salary-input").value) || 0;
-    if (results.length) renderCards();
+    if (results.length) {
+      showMsg("Currency changed — make sure your salary is in " + currency + ", then click Compare again.", "warning");
+      renderCards();
+    }
   });
 
   document.getElementById("toggle-local").addEventListener("click", function() {
