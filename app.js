@@ -1,5 +1,6 @@
 // API key from config.js
-let apiKey = (typeof RAPIDAPI_KEY !== "undefined") ? RAPIDAPI_KEY : "";
+let apiKey = "";
+try { apiKey = RAPIDAPI_KEY; } catch(e) {}
 let apiHost = "cost-of-living-and-prices.p.rapidapi.com";
 
 let countries = [];
