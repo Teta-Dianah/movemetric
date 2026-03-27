@@ -256,10 +256,12 @@ function buildCosts(apiData) {
 // ============================================================
 
 function calcPower(costs, sal) {
+  // Use realistic monthly expenses: 1br rent + food*30 + transport + internet
   let rent  = costs.HOUSING.items[1] ? costs.HOUSING.items[1].v : 0;
-  let trans = costs.TRANSPORT.total;
   let food  = costs.FOOD.items[0]    ? costs.FOOD.items[0].v * 30 : 0;
-  let exp   = rent + trans + food;
+  let trans = costs.TRANSPORT.total;
+  let net   = costs.INTERNET.total;
+  let exp   = rent + food + trans + net;
   return sal <= 0 ? 0 : Math.max(0, Math.round(((sal - exp) / sal) * 100));
 }
 
@@ -537,8 +539,8 @@ function renderDashboard() {
       let cat = city.costs[id];
       if (!cat.items.length) return;
       let pct = maxC[id] > 0 ? cat.total / maxC[id] * 100 : 0;
-      let r   = sal > 0 ? cat.total / sal : 0;
-      let col = r < 0.15 ? "green" : r < 0.35 ? "yellow" : "red";
+      // Color: green = cheapest city, yellow = mid, red = most expensive
+      let col = pct < 40 ? "green" : pct < 75 ? "yellow" : "red";
 
       h += '<div class="category-row">';
       h += '<div class="category-label"><span>' + cat.label + '</span><span class="category-cost">' + money(convert(cat.total)) + '</span></div>';
