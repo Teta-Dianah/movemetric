@@ -143,15 +143,20 @@ function searchCities(query) {
   if (!query || query.length < 2) { ul.classList.remove("open"); return; }
 
   let q = query.toLowerCase();
-  let found = [];
-  for (let i = 0; i < allCities.length && found.length < 8; i++) {
+  let starts = [];
+  let contains = [];
+  for (let i = 0; i < allCities.length; i++) {
     let c = allCities[i];
     let taken = false;
     for (let j = 0; j < picked.length; j++)
       if (picked[j].id === c.city_id) taken = true;
-    if (!taken && c.city_name.toLowerCase().includes(q))
-      found.push(c);
+    if (taken) continue;
+    let name = c.city_name.toLowerCase();
+    if (name.indexOf(q) === 0) starts.push(c);
+    else if (name.includes(q)) contains.push(c);
+    if (starts.length + contains.length >= 8) break;
   }
+  let found = starts.concat(contains).slice(0, 8);
 
   if (!found.length) {
     ul.innerHTML = '<li style="color:#999">No cities found</li>';
