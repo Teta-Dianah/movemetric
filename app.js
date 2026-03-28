@@ -12,6 +12,40 @@ let showUSD = false;
 let currency = "";
 let salary = 0;
 
+// cache API responses in localStorage so we dont waste requests
+function getCache(city, country) {
+  try {
+    let saved = JSON.parse(localStorage.getItem("mm_" + city + "_" + country));
+    if (saved && Date.now() - saved.time < 3600000) return saved.data;
+  } catch(e) {}
+  return null;
+}
+
+function saveCache(city, country, data) {
+  try { localStorage.setItem("mm_" + city + "_" + country, JSON.stringify({ data: data, time: Date.now() })); }
+  catch(e) {}
+}
+
+// track how many API calls we made this hour (free plan = 10/hr)
+function countRequests() {
+  try {
+    let log = JSON.parse(localStorage.getItem("mm_req_log") || "[]");
+    let recent = [];
+    for (let i = 0; i < log.length; i++)
+      if (Date.now() - log[i] < 3600000) recent.push(log[i]);
+    localStorage.setItem("mm_req_log", JSON.stringify(recent));
+    return recent.length;
+  } catch(e) { return 0; }
+}
+
+function logRequest() {
+  try {
+    let log = JSON.parse(localStorage.getItem("mm_req_log") || "[]");
+    log.push(Date.now());
+    localStorage.setItem("mm_req_log", JSON.stringify(log));
+  } catch(e) {}
+}
+
 // helper functions
 function showMsg(text, type) {
   let el = document.getElementById("status-message");
@@ -206,16 +240,31 @@ async function doCompare() {
     }
   }
 
-  // fetch prices for each city
+  // fetch prices for each city, use cache if we already have it
   results = [];
+  let needFetch = 0;
+  for (let i = 0; i < picked.length; i++)
+    if (!getCache(picked[i].name, picked[i].country)) needFetch++;
+
+  if (countRequests() + needFetch > 10) {
+    document.getElementById("loader").classList.remove("active");
+    showMsg("Too many requests this hour. Wait a bit or compare cities you already looked up.", "warning");
+    return;
+  }
+
   for (let i = 0; i < picked.length; i++) {
     try {
-      let url = "https://" + apiHost + "/prices?city_name=" + encodeURIComponent(picked[i].name)
-        + "&country_name=" + encodeURIComponent(picked[i].country);
-      let res = await fetch(url, {
-        headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
-      });
-      let data = await res.json();
+      let data = getCache(picked[i].name, picked[i].country);
+      if (!data) {
+        let url = "https://" + apiHost + "/prices?city_name=" + encodeURIComponent(picked[i].name)
+          + "&country_name=" + encodeURIComponent(picked[i].country);
+        let res = await fetch(url, {
+          headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
+        });
+        data = await res.json();
+        saveCache(picked[i].name, picked[i].country, data);
+        logRequest();
+      }
       let costs = extractCosts(data);
       results.push({
         id: picked[i].id, name: picked[i].name, country: picked[i].country,
@@ -319,15 +368,24 @@ document.addEventListener("DOMContentLoaded", async function() {
   }
 
   if (apiKey) {
+    // load city list from cache if we have it, otherwise fetch
     try {
-      let res = await fetch("https://" + apiHost + "/cities", {
-        headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
-      });
-      let data = await res.json();
-      allCities = data.cities || data.data || data;
-      console.log("loaded " + allCities.length + " cities");
-    } catch(e) {
-      showMsg("Could not load cities.", "error");
+      let saved = JSON.parse(localStorage.getItem("mm_cities"));
+      if (saved && Date.now() - saved.time < 3600000) allCities = saved.data;
+    } catch(e) {}
+
+    if (!allCities.length) {
+      try {
+        let res = await fetch("https://" + apiHost + "/cities", {
+          headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
+        });
+        let data = await res.json();
+        allCities = data.cities || data.data || data;
+        logRequest();
+        try { localStorage.setItem("mm_cities", JSON.stringify({ data: allCities, time: Date.now() })); } catch(e) {}
+      } catch(e) {
+        showMsg("Could not load cities.", "error");
+      }
     }
   } else {
     showMsg("No API key. Add it in config.js", "error");
