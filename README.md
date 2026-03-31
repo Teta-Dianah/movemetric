@@ -4,6 +4,8 @@ A web app that lets you compare how far your salary goes in different cities aro
 
 Live at: https://dianah.tech
 
+Demo video: https://youtu.be/xsOQhphY0S4
+
 ## How to Run It Locally
 
 1. Clone the repo:
