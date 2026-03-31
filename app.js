@@ -12,11 +12,11 @@ let showUSD = false;
 let currency = "";
 let salary = 0;
 
-// cache API responses in localStorage so we dont waste requests
+// caching - save API responses so we dont keep calling the API for the same city
 function getCache(city, country) {
   try {
     let saved = JSON.parse(localStorage.getItem("mm_" + city + "_" + country));
-    if (saved && Date.now() - saved.time < 3600000) return saved.data;
+    if (saved && Date.now() - saved.time < 3600000) return saved.data; // 1 hour
   } catch(e) {}
   return null;
 }
@@ -26,7 +26,7 @@ function saveCache(city, country, data) {
   catch(e) {}
 }
 
-// track how many API calls we made this hour (free plan = 10/hr)
+// the free plan only allows 10 requests per hour so we need to keep track
 function countRequests() {
   try {
     let log = JSON.parse(localStorage.getItem("mm_req_log") || "[]");
@@ -46,7 +46,6 @@ function logRequest() {
   } catch(e) {}
 }
 
-// helper functions
 function showMsg(text, type) {
   let el = document.getElementById("status-message");
   el.className = "status-message " + (type || "info");
@@ -77,7 +76,7 @@ function getFlag(name) {
   return "";
 }
 
-// pull the prices we care about from the API response
+// extract the prices we need from the api response
 function extractCosts(apiData) {
   let prices = apiData.prices || apiData.data || [];
 
@@ -99,13 +98,34 @@ function extractCosts(apiData) {
   let big = find(["three bedroom", "in city"]);
   let med = find(["one bedroom", "in city"]);
   let sm  = find(["one bedroom", "outside"]) || Math.round(med * 0.75);
+  let meal = find(["meal", "inexpensive"]);
+  let coffee = find(["cappuccino"]);
+  let beer = find(["imported beer"]);
+  let bus = find(["monthly pass"]);
+  let wifi = find(["internet"]);
+  let doctor = find(["doctor visit"]);
 
   return {
-    HOUSING:   { label: "Housing",          total: big+med+sm, items: [{l:"Large Apartment (3br)", v:big}, {l:"Medium Apartment (1br)", v:med}, {l:"Small Apartment (outside)", v:sm}] },
-    FOOD:      { label: "Food & Daily Life", total: find(["meal","inexpensive"]) + find(["cappuccino"]) + find(["imported beer"]), items: [{l:"Restaurant Meal", v:find(["meal","inexpensive"])}, {l:"Cappuccino", v:find(["cappuccino"])}, {l:"Beer (Imported)", v:find(["imported beer"])}] },
-    TRANSPORT: { label: "Transportation",    total: find(["monthly pass"]), items: [{l:"Monthly Transport Pass", v:find(["monthly pass"])}] },
-    INTERNET:  { label: "Internet",          total: find(["internet"]),     items: [{l:"Broadband Monthly", v:find(["internet"])}] },
-    HEALTH:    { label: "Healthcare",        total: find(["doctor visit"]), items: find(["doctor visit"]) > 0 ? [{l:"Doctor Visit", v:find(["doctor visit"])}] : [] }
+    HOUSING: {
+      label: "Housing", total: big + med + sm,
+      items: [{l: "Large Apartment (3br)", v: big}, {l: "Medium Apartment (1br)", v: med}, {l: "Small Apartment (outside)", v: sm}]
+    },
+    FOOD: {
+      label: "Food & Daily Life", total: meal + coffee + beer,
+      items: [{l: "Restaurant Meal", v: meal}, {l: "Cappuccino", v: coffee}, {l: "Beer (Imported)", v: beer}]
+    },
+    TRANSPORT: {
+      label: "Transportation", total: bus,
+      items: [{l: "Monthly Transport Pass", v: bus}]
+    },
+    INTERNET: {
+      label: "Internet", total: wifi,
+      items: [{l: "Broadband Monthly", v: wifi}]
+    },
+    HEALTH: {
+      label: "Healthcare", total: doctor,
+      items: doctor > 0 ? [{l: "Doctor Visit", v: doctor}] : []
+    }
   };
 }
 
@@ -216,7 +236,7 @@ function showChips() {
     btns[i].addEventListener("click", function() { removeCity(parseInt(this.getAttribute("data-id"))); });
 }
 
-// main compare - gets exchange rates then fetches prices for each city
+// runs when you click compare
 async function doCompare() {
   salary = parseFloat(document.getElementById("salary-input").value);
   if (!salary || salary <= 0) {
@@ -292,7 +312,7 @@ async function doCompare() {
   renderCards();
 }
 
-// draw the city cards
+// builds the cards that show up after comparing
 function renderCards() {
   let box = document.getElementById("dashboard");
   box.innerHTML = "";
@@ -368,7 +388,7 @@ function renderCards() {
   }
 }
 
-// start everything when page loads
+// when page loads
 document.addEventListener("DOMContentLoaded", async function() {
   try {
     let res = await fetch("https://restcountries.com/v3.1/all?fields=name,flags,currencies,cca2");
