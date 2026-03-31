@@ -267,7 +267,13 @@ async function doCompare() {
           headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": apiHost }
         });
         data = await res.json();
-        saveCache(picked[i].name, picked[i].country, data);
+        // only cache if we actually got prices back
+        if (data.prices || data.data) {
+          saveCache(picked[i].name, picked[i].country, data);
+        } else {
+          console.log("no price data for " + picked[i].name);
+          continue;
+        }
         logRequest();
       }
       let costs = extractCosts(data);
